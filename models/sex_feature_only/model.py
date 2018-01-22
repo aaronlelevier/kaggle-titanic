@@ -54,6 +54,7 @@ print("loading, " + str(file_length) + " line(s)\n")
 train_epochs = 40
 epochs_per_eval = 2
 batch_size = 40
+hidden_units = [100, 75, 50, 25]
 train_data = 'input/train-sex-training-set.csv'
 test_data = 'input/train-sex-dev-set.csv'
 
