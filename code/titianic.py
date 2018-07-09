@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from tqdm import tqdm
 
@@ -67,14 +67,6 @@ my_feature_columns = [
 ]
 
 
-classifier = tf.estimator.DNNClassifier(
-    feature_columns=my_feature_columns,
-    # Two hidden layers of 10 nodes each.
-    hidden_units=[10, 10],
-    # The model must choose between 3 classes.
-    n_classes=2)
-
-
 def train_input_fn(features, labels, batch_size):
     """An input function for training"""
     # Convert the inputs to a Dataset.
@@ -85,11 +77,6 @@ def train_input_fn(features, labels, batch_size):
 
     # Return the read end of the pipeline.
     return dataset.make_one_shot_iterator().get_next()
-
-
-classifier.train(
-    input_fn=lambda: train_input_fn(train_x, train_y, batch_size),
-    steps=train_steps)
 
 
 def eval_input_fn(features, labels, batch_size):
@@ -112,15 +99,46 @@ def eval_input_fn(features, labels, batch_size):
     return dataset.make_one_shot_iterator().get_next()
 
 
-eval_result = classifier.evaluate(
-    input_fn=lambda: eval_input_fn(dev_x, dev_y, batch_size))
+classifier = tf.estimator.DNNClassifier(
+    feature_columns=my_feature_columns,
+    # Two hidden layers of 10 nodes each.
+    hidden_units=[10, 10],
+    # The model must choose between 3 classes.
+    n_classes=2)
 
 
-print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
+def run_train(train_x, train_y):
+    train_samples = len(train_x['Age'])
+    print(
+        f'All shapes - train_x: {train_samples}, train_y: {len(train_y)}'
+    )
+    classifier.train(
+        input_fn=lambda: train_input_fn(train_x, train_y, 50),
+        steps=10)
 
+def cross_validate(train_x_all, train_y_all, split_size=5):
+    print(
+        f'All shapes - train_x_all: {len(train_x_all)}, train_y_all: {len(train_y_all)}'
+    )
+    results = []
+    kf = KFold(n_splits=split_size)
+    for train_idx, val_idx in kf.split(train_x_all, train_y_all):
+        train_x = {'Age': train_x_all[train_idx]}
+        train_y = train_y_all[train_idx]
+        val_x = {'Age': train_x_all[val_idx]}
+        val_y = train_y_all[val_idx]
 
-# ## Next
-# 
-# add more features
-# 
-# try in a script format, instead of NB
+        run_train(train_x, train_y)
+
+        eval_result = classifier.evaluate(
+            input_fn=lambda: eval_input_fn(val_x, val_y, batch_size))
+        results.append(eval_result)
+
+    return results
+
+# main
+train_x_all = train['Age'].fillna(0)
+train_y_all = train['Survived']
+results = cross_validate(train_x_all, train_y_all)
+for r in results:
+    print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**r))
