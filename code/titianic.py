@@ -104,7 +104,11 @@ classifier = tf.estimator.DNNClassifier(
     # Two hidden layers of 10 nodes each.
     hidden_units=[10, 10],
     # The model must choose between 3 classes.
-    n_classes=2)
+    n_classes=2,
+    optimizer=tf.train.ProximalAdagradOptimizer(
+      learning_rate=0.1,
+      l1_regularization_strength=0.001
+    ))
 
 
 def run_train(train_x, train_y):
@@ -115,6 +119,7 @@ def run_train(train_x, train_y):
     classifier.train(
         input_fn=lambda: train_input_fn(train_x, train_y, 50),
         steps=10)
+
 
 def cross_validate(train_x_all, train_y_all, split_size=5):
     print(
