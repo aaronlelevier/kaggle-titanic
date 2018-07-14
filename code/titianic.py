@@ -128,6 +128,18 @@ def main():
     for r in results:
         print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**r))
 
+    predict_input_fn = tf.estimator.inputs.numpy_input_fn(
+        x={
+            'Age': test['Age'].fillna(0),
+            'HasCabin': test["Cabin"].apply(lambda x: 0 if type(x) == float else 1)
+        },
+        num_epochs=1,
+        shuffle=False)
+    predictions = classifier.predict(input_fn=predict_input_fn)
+    predicted_classes = [p["classes"][0].decode('utf8') for p in predictions]
+    submission = pd.DataFrame(data={'PassengerId': test['PassengerId'], 'Survived': predicted_classes})
+    submission.to_csv(f'{PATH}submission.csv', index=False)
+
 
 if __name__ == '__main__':
     main()
