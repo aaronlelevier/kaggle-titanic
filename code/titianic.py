@@ -1,3 +1,4 @@
+import os
 import re
 import argparse
 import time
@@ -6,6 +7,10 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf # pylint: disable=import-error
 from sklearn.model_selection import KFold
+
+# Just disables the warning, doesn't enable AVX/FMA
+# SO Answer: https://stackoverflow.com/a/47227886/1913888
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # File Args
 parser = argparse.ArgumentParser()
@@ -16,25 +21,17 @@ args = parser.parse_args()
 
 
 # Hyper parameters
-LR = 0.1
-
-EPOCHS = 1
-
+LR = 0.01
+EPOCHS = 10
 BATCH_SIZE = 50
-
-HIDDEN_UNITS = [10]
-
+HIDDEN_UNITS = [10, 10]
 L1_REGULARIZATION_STRENGTH = 0.001
-
 KFOLD_SPLIT_SIZE = 5
 
 # Constants
 PATH = '../input/'
-
 N_SAMPLES = len(list(open(f'{PATH}train.csv'))) - 1 # skip header
-
 STEPS = np.ceil(N_SAMPLES // BATCH_SIZE)
-
 N_CLASSES = 2
 
 
@@ -239,12 +236,10 @@ def main():
         hidden_units=HIDDEN_UNITS,
         # The model must choose between 3 classes.
         n_classes=N_CLASSES,
-        optimizer=tf.train.ProximalAdagradOptimizer(
+        optimizer=tf.train.RMSPropOptimizer(
             learning_rate=LR,
-            l1_regularization_strength=L1_REGULARIZATION_STRENGTH
-        ))
-
-    print(f'classifier.model_dir: {classifier.model_dir}')
+        ),
+        model_dir='../models/titanic')
 
     train_x_all = pd.DataFrame(get_features(train))
 
@@ -258,6 +253,8 @@ def main():
         make_predictions(classifier, test)
     else:
         print('NOT make_predictions')
+
+    print(f'classifier.model_dir: {classifier.model_dir}')
 
     print("time: {seconds} seconds".format(seconds=(time.time() - start_time)))
 
