@@ -169,13 +169,25 @@ def get_feature_columns(train, test):
             key='Title', hash_bucket_size=5),
         dimension=5)
 
+    categorical_column_sex = tf.feature_column.embedding_column(
+        tf.feature_column.categorical_column_with_vocabulary_list(
+            key='Sex', vocabulary_list=('male', 'female')),
+        dimension=2)
+
+    categorical_column_embarked = tf.feature_column.embedding_column(
+        tf.feature_column.categorical_column_with_vocabulary_list(
+            key='Embarked', vocabulary_list=('S', 'C', 'Q')),
+        dimension=1)
+
     return [
         numeric_column_age,
         categorical_column_has_cabin,
         categorical_column_family_size,
         categorical_column_is_alone,
         numeric_column_fare,
-        categorical_column_title
+        categorical_column_title,
+        categorical_column_sex,
+        categorical_column_embarked
     ]
 
 
@@ -193,7 +205,9 @@ def get_features(df):
         'FamilySize': df['FamilySize'],
         'IsAlone': df['IsAlone'],
         'Fare': df['Fare'].fillna(df['Fare'].median()),
-        'Title': get_title(df)
+        'Title': get_title(df),
+        'Sex': df['Sex'],
+        'Embarked': df['Embarked'].fillna(np.random.choice(['S', 'C', 'Q']))
     }
 
 
