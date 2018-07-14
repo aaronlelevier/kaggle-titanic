@@ -1,3 +1,4 @@
+import re
 import argparse
 import time
 
@@ -117,6 +118,24 @@ def get_age(df):
     return df['Age'].astype(int)
 
 
+def get_title(df):
+    def _get_title(name):
+        title_search = re.search(r' ([A-Za-z]+)\.', name)
+        # If the title exists, extract and return it.
+        if title_search:
+            return title_search.group(1)
+        return ""
+
+    df['Title'] = df['Name'].apply(_get_title)
+    # Group all non-common titles into one single grouping "Rare"
+    df['Title'] = df['Title'].replace(
+        ['Lady', 'Countess','Capt', 'Col','Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer', 'Dona'], 'Rare')
+    df['Title'] = df['Title'].replace('Mlle', 'Miss')
+    df['Title'] = df['Title'].replace('Ms', 'Miss')
+    df['Title'] = df['Title'].replace('Mme', 'Mrs')
+    return df['Title']
+
+
 def get_feature_columns(train, test):
     """
     Returns a list of tf feature_columns's
@@ -145,12 +164,18 @@ def get_feature_columns(train, test):
 
     numeric_column_fare = tf.feature_column.numeric_column(key='Fare')
 
+    categorical_column_title = tf.feature_column.embedding_column(
+        tf.feature_column.categorical_column_with_hash_bucket(
+            key='Title', hash_bucket_size=5),
+        dimension=5)
+
     return [
         numeric_column_age,
         categorical_column_has_cabin,
         categorical_column_family_size,
         categorical_column_is_alone,
-        numeric_column_fare
+        numeric_column_fare,
+        categorical_column_title
     ]
 
 
@@ -167,7 +192,8 @@ def get_features(df):
         'HasCabin': df["Cabin"].apply(lambda x: 0 if type(x) == float else 1),
         'FamilySize': df['FamilySize'],
         'IsAlone': df['IsAlone'],
-        'Fare': df['Fare'].fillna(df['Fare'].median())
+        'Fare': df['Fare'].fillna(df['Fare'].median()),
+        'Title': get_title(df)
     }
 
 
