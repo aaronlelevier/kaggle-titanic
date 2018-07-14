@@ -127,6 +127,10 @@ def get_feature_columns(train, test):
             key='FamilySize', vocabulary_list=get_unique_family_sizes(train, test)),
         dimension=2)
 
+    categorical_column_has_cabin = tf.feature_column.indicator_column(
+        tf.feature_column.categorical_column_with_vocabulary_list(
+            key='IsAlone', vocabulary_list=(0, 1)))
+
     return [
         numeric_column_age,
         categorical_column_has_cabin,
@@ -136,10 +140,17 @@ def get_feature_columns(train, test):
 
 def get_features(df):
     "Returns a feature engineeered DataFrame"
+    # FamilySize
+    df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
+    # IsAlone
+    df['IsAlone'] = 0
+    df.loc[df['FamilySize'] == 1, 'IsAlone'] = 1
+
     return {
         'Age': df['Age'].fillna(0),
         'HasCabin': df["Cabin"].apply(lambda x: 0 if type(x) == float else 1),
-        'FamilySize' : df['SibSp'] + df['Parch'] + 1
+        'FamilySize': df['FamilySize'],
+        'IsAlone': df['IsAlone']
     }
 
 
