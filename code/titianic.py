@@ -108,6 +108,15 @@ def get_unique_family_sizes(train, test):
     return sorted(list(set(list(test['FamilySize'].values) + list(train['FamilySize'].values))))
 
 
+def get_age(df):
+    age_avg = df['Age'].mean()
+    age_std = df['Age'].std()
+    age_null_count = df['Age'].isnull().sum()
+    age_null_random_list = np.random.randint(age_avg - age_std, age_avg + age_std, size=age_null_count)
+    df['Age'][np.isnan(df['Age'])] = age_null_random_list
+    return df['Age'].astype(int)
+
+
 def get_feature_columns(train, test):
     """
     Returns a list of tf feature_columns's
@@ -154,7 +163,7 @@ def get_features(df):
     df.loc[df['FamilySize'] == 1, 'IsAlone'] = 1
 
     return {
-        'Age': df['Age'].fillna(0),
+        'Age': get_age(df),
         'HasCabin': df["Cabin"].apply(lambda x: 0 if type(x) == float else 1),
         'FamilySize': df['FamilySize'],
         'IsAlone': df['IsAlone'],
@@ -194,6 +203,8 @@ def main():
             learning_rate=LR,
             l1_regularization_strength=L1_REGULARIZATION_STRENGTH
         ))
+
+    print(f'classifier.model_dir: {classifier.model_dir}')
 
     train_x_all = pd.DataFrame(get_features(train))
 
