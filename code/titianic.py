@@ -14,7 +14,7 @@ N_SAMPLES = len(list(open(f'{PATH}train.csv'))) - 1 # skip header
 
 STEPS = np.ceil(N_SAMPLES // BATCH_SIZE)
 
-HIDDEN_UNITS = [10, 10]
+HIDDEN_UNITS = [5]
 
 N_CLASSES = 2
 
@@ -63,29 +63,30 @@ def eval_input_fn(features, labels):
     return dataset.make_one_shot_iterator().get_next()
 
 
-def run_train(classifier, train_x, train_y):
-    train_samples = len(train_x['Age'])
-    print(
-        f'All shapes - train_x: {train_samples}, train_y: {len(train_y)}'
-    )
-    classifier.train(
-        input_fn=lambda: train_input_fn(train_x, train_y),
-        steps=STEPS)
-
-
 def cross_validate(classifier, train_x_all, train_y_all):
+    """
+    Main function call for training and cross validating
+
+    Args:
+        classifier (tf.estimator.Estimator)
+        train_x_all (pd.DataFrame)
+        train_y_all (np.ndarray)
+    """
     print(
         f'All shapes - train_x_all: {len(train_x_all)}, train_y_all: {len(train_y_all)}'
     )
     results = []
     kf = KFold(n_splits=KFOLD_SPLIT_SIZE)
     for train_idx, val_idx in kf.split(train_x_all, train_y_all):
-        train_x = {'Age': train_x_all[train_idx]}
+        train_x = train_x_all.iloc[train_idx]
         train_y = train_y_all[train_idx]
-        val_x = {'Age': train_x_all[val_idx]}
+
+        val_x = train_x_all.iloc[val_idx]
         val_y = train_y_all[val_idx]
 
-        run_train(classifier, train_x, train_y)
+        classifier.train(
+            input_fn=lambda: train_input_fn(train_x, train_y),
+            steps=STEPS)
 
         eval_result = classifier.evaluate(
             input_fn=lambda: eval_input_fn(val_x, val_y))
@@ -114,7 +115,9 @@ def main():
             l1_regularization_strength=L1_REGULARIZATION_STRENGTH
         ))
 
-    train_x_all = train['Age'].fillna(0)
+    train_x_all = pd.DataFrame({
+        'Age': train['Age'].fillna(0)
+    })
     train_y_all = train['Survived']
     results = cross_validate(classifier, train_x_all, train_y_all)
     for r in results:
