@@ -23,14 +23,6 @@ L1_REGULARIZATION_STRENGTH = 0.001
 KFOLD_SPLIT_SIZE = 5
 
 
-def get_feature_columns():
-    numeric_column_age = tf.feature_column.numeric_column(key='Age')
-
-    return [
-        numeric_column_age
-    ]
-
-
 def train_input_fn(features, labels):
     """An input function for training"""
     # Convert the inputs to a Dataset.
@@ -95,6 +87,18 @@ def cross_validate(classifier, train_x_all, train_y_all):
     return results
 
 
+def get_feature_columns():
+    numeric_column_age = tf.feature_column.numeric_column(key='Age')
+    categorical_column_has_cabin = tf.feature_column.indicator_column(
+        tf.feature_column.categorical_column_with_vocabulary_list(
+            key='HasCabin', vocabulary_list=(0, 1)))
+
+    return [
+        numeric_column_age,
+        categorical_column_has_cabin
+    ]
+
+
 def main():
     train = pd.read_csv(f'{PATH}train.csv')
     print('train shape:', train.shape)
@@ -116,7 +120,8 @@ def main():
         ))
 
     train_x_all = pd.DataFrame({
-        'Age': train['Age'].fillna(0)
+        'Age': train['Age'].fillna(0),
+        'HasCabin': train["Cabin"].apply(lambda x: 0 if type(x) == float else 1)
     })
     train_y_all = train['Survived']
     results = cross_validate(classifier, train_x_all, train_y_all)
