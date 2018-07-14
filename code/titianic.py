@@ -118,23 +118,30 @@ def get_feature_columns(train, test):
     """
     numeric_column_age = tf.feature_column.numeric_column(key='Age')
 
-    categorical_column_has_cabin = tf.feature_column.indicator_column(
-        tf.feature_column.categorical_column_with_vocabulary_list(
-            key='HasCabin', vocabulary_list=(0, 1)))
-
-    categorical_column_family_size = tf.feature_column.embedding_column(
-        tf.feature_column.categorical_column_with_vocabulary_list(
-            key='FamilySize', vocabulary_list=get_unique_family_sizes(train, test)),
+    categorical_column_has_cabin = tf.feature_column.embedding_column(
+        tf.feature_column.categorical_column_with_identity(
+            key='HasCabin', num_buckets=2),
         dimension=2)
 
-    categorical_column_has_cabin = tf.feature_column.indicator_column(
+    family_sizes = get_unique_family_sizes(train, test)
+    categorical_column_family_size = tf.feature_column.embedding_column(
         tf.feature_column.categorical_column_with_vocabulary_list(
-            key='IsAlone', vocabulary_list=(0, 1)))
+            key='FamilySize', vocabulary_list=family_sizes),
+        dimension=len(family_sizes))
+
+    categorical_column_is_alone = tf.feature_column.embedding_column(
+        tf.feature_column.categorical_column_with_identity(
+            key='IsAlone', num_buckets=2),
+        dimension=2)
+
+    numeric_column_fare = tf.feature_column.numeric_column(key='Fare')
 
     return [
         numeric_column_age,
         categorical_column_has_cabin,
-        categorical_column_family_size
+        categorical_column_family_size,
+        categorical_column_is_alone,
+        numeric_column_fare
     ]
 
 
@@ -150,7 +157,8 @@ def get_features(df):
         'Age': df['Age'].fillna(0),
         'HasCabin': df["Cabin"].apply(lambda x: 0 if type(x) == float else 1),
         'FamilySize': df['FamilySize'],
-        'IsAlone': df['IsAlone']
+        'IsAlone': df['IsAlone'],
+        'Fare': df['Fare'].fillna(df['Fare'].median())
     }
 
 
