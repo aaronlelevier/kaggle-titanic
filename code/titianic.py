@@ -1,9 +1,19 @@
+import argparse
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf # pylint: disable=import-error
 from sklearn.model_selection import KFold
 
+# File Args
+parser = argparse.ArgumentParser()
+parser.add_argument('--predict', dest='predict', action='store_true')
+parser.add_argument('--no-predict', dest='predict', action='store_false')
+parser.set_defaults(predict=True)
+args = parser.parse_args()
 
+
+# Global VARs
 PATH = '../input/'
 
 LR = 0.1
@@ -99,6 +109,25 @@ def get_feature_columns():
     ]
 
 
+def get_features(df):
+    "Returns a feature engineeered DataFame"
+    return {
+        'Age': df['Age'].fillna(0),
+        'HasCabin': df["Cabin"].apply(lambda x: 0 if type(x) == float else 1)
+    }
+
+
+def make_predictions(classifier, test):
+    predict_input_fn = tf.estimator.inputs.numpy_input_fn(
+        x=get_features(test),
+        num_epochs=1,
+        shuffle=False)
+    predictions = classifier.predict(input_fn=predict_input_fn)
+    predicted_classes = [p["classes"][0].decode('utf8') for p in predictions]
+    submission = pd.DataFrame(data={'PassengerId': test['PassengerId'], 'Survived': predicted_classes})
+    submission.to_csv(f'{PATH}submission.csv', index=False)
+
+
 def main():
     train = pd.read_csv(f'{PATH}train.csv')
     print('train shape:', train.shape)
@@ -119,26 +148,18 @@ def main():
             l1_regularization_strength=L1_REGULARIZATION_STRENGTH
         ))
 
-    train_x_all = pd.DataFrame({
-        'Age': train['Age'].fillna(0),
-        'HasCabin': train["Cabin"].apply(lambda x: 0 if type(x) == float else 1)
-    })
+    train_x_all = pd.DataFrame(get_features(train))
+
     train_y_all = train['Survived']
     results = cross_validate(classifier, train_x_all, train_y_all)
     for r in results:
         print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**r))
 
-    predict_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x={
-            'Age': test['Age'].fillna(0),
-            'HasCabin': test["Cabin"].apply(lambda x: 0 if type(x) == float else 1)
-        },
-        num_epochs=1,
-        shuffle=False)
-    predictions = classifier.predict(input_fn=predict_input_fn)
-    predicted_classes = [p["classes"][0].decode('utf8') for p in predictions]
-    submission = pd.DataFrame(data={'PassengerId': test['PassengerId'], 'Survived': predicted_classes})
-    submission.to_csv(f'{PATH}submission.csv', index=False)
+    if args.predict:
+        print('make_predictions')
+        make_predictions(classifier, test)
+    else:
+        print('NOT make_predictions')
 
 
 if __name__ == '__main__':
